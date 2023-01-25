@@ -26,6 +26,11 @@ s.mytasklist, -- Middle widget
         },
 ```
 
+**Note.** Older versions of `pactl`, like the one shipped with Debian Bullseye,
+do not provide commands like get-sink-volume or get-sink-mute, which are used
+by this widget. However, a wrapper script `pactl` is provided that augments
+`/usr/bin/pactl` to provide these commands.
+
 ### Shortcuts
 
 To improve responsiveness of the widget when volume level is changed by a shortcut use corresponding methods of the widget:

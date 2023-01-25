@@ -1,0 +1,30 @@
+#!/bin/sh
+
+PACTL=/usr/bin/pactl
+
+if [ "$1" = "--help" ]; then
+    echo "This is wrapper script around ${PACTL} to provide the commands get-sink-volume"
+    echo "and get-sink-mute if not provided by pactl."
+    echo ""
+    ${PACTL} "${@}"
+fi
+
+# pactl already provides the get-* commands, so plainly call pactl
+if [ -n "$(${PACTL} --help | grep get-)" ]; then
+    $PACTL "${@}"
+fi
+
+CMD=$1
+DEVICE=$2
+
+if [ "${DEVICE}" = "@DEFAULT_SINK@" ]; then
+    DEVICE=$(pactl info | grep "Default Sink:" | sed "s/.*: *//")
+fi
+
+if [ "${CMD}" = "get-sink-volume" ]; then
+    pactl list sinks | grep -E "(Sink #|Name:|^\s*Volume:)" | grep -A2 ${DEVICE} | grep "Volume:" | sed "s/^\s*//"
+fi
+
+if [ "${CMD}" = "get-sink-mute" ]; then
+    pactl list sinks | grep -E "(Sink #|Name:|Mute:)" | grep -A2 ${DEVICE} | grep "Mute:" | sed "s/^\s*//"
+fi
