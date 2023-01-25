@@ -16,15 +16,40 @@ function pactl.mute_toggle(device)
     spawn('pactl set-sink-mute ' .. device .. ' toggle', false)
 end
 
+function pactl.get_default_sink()
+    local line = utils.popen_and_return('pactl info'):match('Default Sink: [^\n]*')
+    if line == nil then
+        return "none"
+    end
+
+    local t = utils.split(line, ':')
+    return utils.trim(t[2])
+end
+
 function pactl.get_volume(device)
-    local stdout = utils.popen_and_return('pactl get-sink-volume ' .. device)
+    if device == '@DEFAULT_SINK@' then
+        device = pactl.get_default_sink()
+    end
 
     local volsum, volcnt = 0, 0
-    for vol in string.gmatch(stdout, "(%d?%d?%d)%%") do
-        vol = tonumber(vol)
-        if vol ~= nil then
-            volsum = volsum + vol
-            volcnt = volcnt + 1
+    local matched_sink = false
+    for line in utils.popen_and_return('pactl list sinks'):gmatch('([^\r\n]*)[\r\n]') do
+        local linetrim = utils.trim(line)
+
+        if linetrim == "Name: " .. device then
+            matched_sink = true
+        end
+
+        if matched_sink and linetrim:match("^Volume:") then
+
+            for vol in string.gmatch(linetrim, "(%d?%d?%d)%%") do
+                vol = tonumber(vol)
+                if vol ~= nil then
+                    volsum = volsum + vol
+                    volcnt = volcnt + 1
+                end
+            end
+            break
         end
     end
 
@@ -36,12 +61,26 @@ function pactl.get_volume(device)
 end
 
 function pactl.get_mute(device)
-    local stdout = utils.popen_and_return('pactl get-sink-mute ' .. device)
-    if string.find(stdout, "yes") then
-        return true
-    else
-        return false
+
+    if device == '@DEFAULT_SINK@' then
+        device = pactl.get_default_sink()
     end
+
+    local volsum, volcnt = 0, 0
+    local matched_sink = false
+    for line in utils.popen_and_return('pactl list sinks'):gmatch('([^\r\n]*)[\r\n]') do
+        local linetrim = utils.trim(line)
+
+        if linetrim == "Name: " .. device then
+            matched_sink = true
+        end
+
+        if matched_sink and linetrim == "Mute: yes" then
+            return true
+        end
+    end
+
+    return false
 end
 
 function pactl.get_sinks_and_sources()
